@@ -70,6 +70,9 @@ export default function FolderPage({
   const [previewingTemplates, setPreviewingTemplates] = useState<Set<string>>(
     new Set()
   );
+  const [downloadPptLoading, setDownloadPptLoading] = useState(false);
+  const [downloadAllImagesLoading, setDownloadAllImagesLoading] =
+    useState(false);
 
   // Get folder ID from params
   useEffect(() => {
@@ -227,6 +230,102 @@ export default function FolderPage({
     }, 1000);
   };
 
+  const handleDownloadFolderAsPpt = async () => {
+    if (!folderData || folderData.templates.length === 0) return;
+
+    setDownloadPptLoading(true);
+    try {
+      const templateIds = folderData.templates.map((t) => t.id);
+      const response = await fetch("/api/templates/download-pptx", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          templateIds,
+          fileName: folderData.name,
+        }),
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${folderData.name}.pptx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        toast({
+          title: "Download started",
+          description: `"${folderData.name}" PowerPoint with editable layers is being downloaded.`,
+        });
+      } else {
+        throw new Error("Failed to download PowerPoint");
+      }
+    } catch (error) {
+      toast({
+        title: "Download failed",
+        description: "Failed to download PowerPoint. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadPptLoading(false);
+    }
+  };
+
+  const handleDownloadAllImages = async () => {
+    if (!folderData || folderData.templates.length === 0) return;
+
+    setDownloadAllImagesLoading(true);
+    try {
+      // Download all templates as individual images
+      for (const template of folderData.templates) {
+        try {
+          const response = await fetch(
+            `/api/templates/${template.id}/download`,
+            {
+              credentials: "include",
+            }
+          );
+
+          if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${template.name}.png`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            // Small delay between downloads
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+        } catch (error) {
+          console.error("Error downloading template:", error);
+        }
+      }
+
+      toast({
+        title: "Download started",
+        description: `All ${folderData.templates.length} images from "${folderData.name}" are being downloaded.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Download failed",
+        description: "Failed to download images. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadAllImagesLoading(false);
+    }
+  };
+
   if (!user) {
     return null;
   }
@@ -304,20 +403,46 @@ export default function FolderPage({
           </div>
 
           {/* Action Buttons */}
-          {folderData.templates.length > 0 && (
-            <Button
-              onClick={handleCreateTemplate}
-              disabled={isAtLimit}
-              className={`${
-                isAtLimit
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              }`}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              {isAtLimit ? "Limit Reached (50/50)" : "Add More Templates"}
-            </Button>
-          )}
+          <div className="flex flex-wrap gap-3">
+            {folderData.templates.length > 0 && (
+              <>
+                <Button
+                  onClick={handleDownloadFolderAsPpt}
+                  disabled={downloadPptLoading}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  {downloadPptLoading
+                    ? "Downloading PPT..."
+                    : "Download as PowerPoint"}
+                </Button>
+                <Button
+                  onClick={handleDownloadAllImages}
+                  disabled={downloadAllImagesLoading}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  {downloadAllImagesLoading
+                    ? "Downloading Images..."
+                    : `Download All Images (${folderData.templates.length})`}
+                </Button>
+                <Button
+                  onClick={handleCreateTemplate}
+                  disabled={isAtLimit}
+                  className={`${
+                    isAtLimit
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  }`}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  {isAtLimit ? "Limit Reached (50/50)" : "Add More Templates"}
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Content */}

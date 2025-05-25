@@ -69,67 +69,64 @@ export async function POST(request: NextRequest) {
       const slide = pptx.addSlide();
 
       try {
-        // If we have both background and question images, create merged image
+        // Create editable PowerPoint with separate layers
         if (template.backgroundImage?.imageUrl && template.questionUrl) {
           try {
-            // Import canvas for server-side image processing
-            const { createCanvas, loadImage } = await import("canvas");
-
-            // Load both images
-            const [backgroundImg, questionImg] = await Promise.all([
-              loadImage(template.backgroundImage.imageUrl),
-              loadImage(template.questionUrl),
-            ]);
-
-            // Create canvas with background image dimensions
-            const canvas = createCanvas(
-              backgroundImg.width,
-              backgroundImg.height
-            );
-            const ctx = canvas.getContext("2d");
-
-            // Draw background image
-            ctx.drawImage(backgroundImg, 0, 0);
-
-            // Calculate question image dimensions and position
-            const padding = 16;
-            const maxQuestionWidth = canvas.width * 0.7;
-            const maxQuestionHeight = canvas.height * 0.8;
-
-            // Calculate scaled dimensions maintaining aspect ratio
-            const questionAspectRatio = questionImg.width / questionImg.height;
-            let questionWidth = Math.min(maxQuestionWidth, questionImg.width);
-            let questionHeight = questionWidth / questionAspectRatio;
-
-            // If height exceeds max, scale down based on height
-            if (questionHeight > maxQuestionHeight) {
-              questionHeight = maxQuestionHeight;
-              questionWidth = questionHeight * questionAspectRatio;
-            }
-
-            // Position at top-left with padding
-            const questionX = padding;
-            const questionY = padding;
-
-            // Draw question image
-            ctx.drawImage(
-              questionImg,
-              questionX,
-              questionY,
-              questionWidth,
-              questionHeight
-            );
-
-            // Convert canvas to base64
-            const mergedImageBase64 = canvas.toDataURL("image/png");
-
-            // Add merged image to slide - fill entire slide
+            // Add background image as base layer - fill entire slide
             slide.addImage({
-              data: mergedImageBase64,
+              data: template.backgroundImage.imageUrl,
               x: 0,
               y: 0,
               w: "100%",
               h: "100%",
+            });
+
+            // Calculate question image position and size for PowerPoint
+            // Standard slide dimensions in PowerPoint: 10" x 7.5" (720 x 540 points)
+            const slideWidth = 10; // inches
+            const slideHeight = 7.5; // inches
+
+            // Convert padding from pixels to inches (assuming 96 DPI)
+            const paddingInches = 16 / 96; // 16px = ~0.167 inches
+
+            // Calculate maximum question image size (70% of slide width, 80% of slide height)
+            const maxQuestionWidthInches = slideWidth * 0.7;
+            const maxQuestionHeightInches = slideHeight * 0.8;
+
+            // Load question image to get dimensions
+            const { loadImage } = await import("canvas");
+            const questionImg = await loadImage(template.questionUrl);
+
+            // Calculate aspect ratio
+            const questionAspectRatio = questionImg.width / questionImg.height;
+
+            // Calculate scaled dimensions maintaining aspect ratio
+            let questionWidthInches = Math.min(
+              maxQuestionWidthInches,
+              questionImg.width / 96
+            );
+            let questionHeightInches =
+              questionWidthInches / questionAspectRatio;
+
+            // If height exceeds max, scale down based on height
+            if (questionHeightInches > maxQuestionHeightInches) {
+              questionHeightInches = maxQuestionHeightInches;
+              questionWidthInches = questionHeightInches * questionAspectRatio;
+            }
+
+            // Add question image as separate, editable object positioned at top-left with padding
+            slide.addImage({
+              data: template.questionUrl,
+              x: paddingInches, // Position from left edge
+              y: paddingInches, // Position from top edge
+              w: questionWidthInches, // Width in inches
+              h: questionHeightInches, // Height in inches
+              // Make it movable and resizable in PowerPoint
+              sizing: {
+                type: "contain",
+                w: questionWidthInches,
+                h: questionHeightInches,
+              },
             });
           } catch (imageError) {
             console.error("Error processing images for slide:", imageError);

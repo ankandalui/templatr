@@ -810,8 +810,8 @@ export default function CreateTemplatePage() {
               )}
             </div>
 
-            {/* Template Preview with Slider for Multiple Templates */}
-            {createdTemplates.length > 1 ? (
+            {/* Template Preview with Slider for Multiple Templates OR Folder Templates */}
+            {templateType === "folder" || createdTemplates.length > 1 ? (
               /* Multiple Templates - Slider View */
               <Card>
                 <CardHeader>
@@ -1101,7 +1101,7 @@ export default function CreateTemplatePage() {
                 </CardContent>
               </Card>
             ) : (
-              /* Single Template - Standard View */
+              /* Single Template - Standard View (Only for Standalone Templates) */
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -1153,46 +1153,103 @@ export default function CreateTemplatePage() {
                     )}
                   </div>
                   <div className="flex gap-3 mt-4">
-                    <Button
-                      className="flex-1"
-                      disabled={downloadSingleLoading}
-                      onClick={async () => {
-                        setDownloadSingleLoading(true);
-                        const template = createdTemplates[0];
-                        try {
-                          const response = await fetch(
-                            `/api/templates/${template.id}/download`,
-                            {
-                              credentials: "include",
-                            }
-                          );
+                    {/* For folder templates, show PPT download even with single image */}
+                    {templateType === "folder" ? (
+                      <Button
+                        className="flex-1"
+                        disabled={downloadPptLoading}
+                        onClick={async () => {
+                          setDownloadPptLoading(true);
+                          try {
+                            const templateIds = createdTemplates.map(
+                              (t) => t.id
+                            );
+                            const response = await fetch(
+                              "/api/templates/download-pptx",
+                              {
+                                method: "POST",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                },
+                                credentials: "include",
+                                body: JSON.stringify({
+                                  templateIds,
+                                  fileName: templateName,
+                                }),
+                              }
+                            );
 
-                          if (response.ok) {
-                            const blob = await response.blob();
-                            const url = window.URL.createObjectURL(blob);
-                            const a = document.createElement("a");
-                            a.href = url;
-                            a.download = `${template.name}.png`;
-                            document.body.appendChild(a);
-                            a.click();
-                            window.URL.revokeObjectURL(url);
-                            document.body.removeChild(a);
-                          } else {
-                            alert("Failed to download template");
+                            if (response.ok) {
+                              const blob = await response.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = `${templateName}.pptx`;
+                              document.body.appendChild(a);
+                              a.click();
+                              window.URL.revokeObjectURL(url);
+                              document.body.removeChild(a);
+                            } else {
+                              alert("Failed to download PowerPoint");
+                            }
+                          } catch (error) {
+                            console.error(
+                              "Error downloading PowerPoint:",
+                              error
+                            );
+                            alert("Failed to download PowerPoint");
+                          } finally {
+                            setDownloadPptLoading(false);
                           }
-                        } catch (error) {
-                          console.error("Error downloading template:", error);
-                          alert("Failed to download template");
-                        } finally {
-                          setDownloadSingleLoading(false);
-                        }
-                      }}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      {downloadSingleLoading
-                        ? "Downloading..."
-                        : "Download Template"}
-                    </Button>
+                        }}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        {downloadPptLoading
+                          ? "Downloading PowerPoint..."
+                          : "Download as PowerPoint"}
+                      </Button>
+                    ) : (
+                      <Button
+                        className="flex-1"
+                        disabled={downloadSingleLoading}
+                        onClick={async () => {
+                          setDownloadSingleLoading(true);
+                          const template = createdTemplates[0];
+                          try {
+                            const response = await fetch(
+                              `/api/templates/${template.id}/download`,
+                              {
+                                credentials: "include",
+                              }
+                            );
+
+                            if (response.ok) {
+                              const blob = await response.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = `${template.name}.png`;
+                              document.body.appendChild(a);
+                              a.click();
+                              window.URL.revokeObjectURL(url);
+                              document.body.removeChild(a);
+                            } else {
+                              alert("Failed to download template");
+                            }
+                          } catch (error) {
+                            console.error("Error downloading template:", error);
+                            alert("Failed to download template");
+                          } finally {
+                            setDownloadSingleLoading(false);
+                          }
+                        }}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        {downloadSingleLoading
+                          ? "Downloading..."
+                          : "Download Template"}
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       disabled={previewLoading}
