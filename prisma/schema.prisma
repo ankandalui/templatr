@@ -1,0 +1,78 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model User {
+  id               String            @id @default(cuid())
+  name             String
+  email            String            @unique
+  password         String
+  folders          Folder[]          // User's folders
+  templates        Template[]        // User's templates
+  backgroundImages BackgroundImage[] // User's background images
+  questions        QuestionImage[]   // Uploaded question images
+  createdAt        DateTime          @default(now())
+}
+
+model Folder {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  color       String     @default("from-blue-500 to-blue-600") // Gradient color class
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  templates   Template[] // Templates in this folder
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([userId, name]) // Prevent duplicate folder names per user
+}
+
+model BackgroundImage {
+  id        String     @id @default(cuid())
+  name      String
+  imageUrl  String     // Cloud storage URL
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  templates Template[] // Templates using this background
+  createdAt DateTime   @default(now())
+}
+
+model Template {
+  id                String           @id @default(cuid())
+  name              String
+  description       String?
+  backgroundImage   BackgroundImage? @relation(fields: [backgroundImageId], references: [id], onDelete: SetNull)
+  backgroundImageId String?
+  questionUrl       String?          // Question image URL
+  thumbnailUrl      String?          // Thumbnail for preview
+  downloadCount     Int              @default(0)
+  viewCount         Int              @default(0)
+  isActive          Boolean          @default(true)
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  folder            Folder?          @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  folderId          String?          // Optional - templates can exist without folders
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model QuestionImage {
+  id        String   @id @default(cuid())
+  name      String
+  imageUrl  String   // Path or cloud URL of question image
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime @default(now())
+}
