@@ -21,7 +21,7 @@ export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
   const dispatch = useAppDispatch();
-  const { isLoading, error } = useAppSelector((state) => state.auth);
+  const { isLoading } = useAppSelector((state) => state.auth);
 
   const {
     register,

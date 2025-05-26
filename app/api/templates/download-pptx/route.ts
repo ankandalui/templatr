@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@/app/generated/prisma";
+import { PrismaClient } from "@prisma/client";
 import { getUserFromRequest } from "@/lib/auth";
 
 const prisma = new PrismaClient();
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     const pptx = new PptxGenJS();
 
     // Set presentation properties
-    pptx.author = user.name || "Templatr";
+    pptx.author = "Templatr";
     pptx.company = "Templatr";
     pptx.subject = fileName || "Generated Templates";
     pptx.title = fileName || "Generated Templates";
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate PPTX buffer
-    const pptxBuffer = await pptx.write("nodebuffer");
+    const pptxBuffer = await pptx.write({ outputType: "nodebuffer" });
 
     // Return PPTX file
     return new NextResponse(pptxBuffer, {

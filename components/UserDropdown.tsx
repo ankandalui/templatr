@@ -42,7 +42,7 @@ export function UserDropdown() {
       });
       router.push("/");
       setIsOpen(false);
-    } catch (error) {
+    } catch {
       toast({
         variant: "destructive",
         title: "Error",

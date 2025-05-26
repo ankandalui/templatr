@@ -1,42 +1,42 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@/app/generated/prisma'
-import { hashPassword } from '@/lib/auth'
-import { signupSchema } from '@/lib/validations'
+import { NextRequest, NextResponse } from "next/server";
+import { PrismaClient } from "@prisma/client";
+import { hashPassword } from "@/lib/auth";
+import { signupSchema } from "@/lib/validations";
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    
+    const body = await request.json();
+
     // Validate the request body
-    const validationResult = signupSchema.safeParse(body)
+    const validationResult = signupSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
-        { 
-          error: 'Validation failed', 
-          details: validationResult.error.errors 
+        {
+          error: "Validation failed",
+          details: validationResult.error.errors,
         },
         { status: 400 }
-      )
+      );
     }
 
-    const { name, email, password } = validationResult.data
+    const { name, email, password } = validationResult.data;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email }
-    })
+      where: { email },
+    });
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'User with this email already exists' },
+        { error: "User with this email already exists" },
         { status: 409 }
-      )
+      );
     }
 
     // Hash the password
-    const hashedPassword = await hashPassword(password)
+    const hashedPassword = await hashPassword(password);
 
     // Create the user
     const user = await prisma.user.create({
@@ -50,24 +50,23 @@ export async function POST(request: NextRequest) {
         name: true,
         email: true,
         createdAt: true,
-      }
-    })
+      },
+    });
 
     return NextResponse.json(
-      { 
-        message: 'User created successfully',
-        user 
+      {
+        message: "User created successfully",
+        user,
       },
       { status: 201 }
-    )
-
+    );
   } catch (error) {
-    console.error('Registration error:', error)
+    console.error("Registration error:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error" },
       { status: 500 }
-    )
+    );
   } finally {
-    await prisma.$disconnect()
+    await prisma.$disconnect();
   }
 }

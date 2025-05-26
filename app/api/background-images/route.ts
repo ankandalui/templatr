@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@/app/generated/prisma";
+import { PrismaClient } from "@prisma/client";
 import { getUserFromRequest } from "@/lib/auth";
 
 const prisma = new PrismaClient();
@@ -44,10 +44,7 @@ export async function POST(request: NextRequest) {
     const name = formData.get("name") as string;
 
     if (!file) {
-      return NextResponse.json(
-        { error: "No file provided" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
     if (!file.type.startsWith("image/")) {
@@ -61,7 +58,7 @@ export async function POST(request: NextRequest) {
     // In production, you'd upload to cloud storage (AWS S3, Cloudinary, etc.)
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const base64 = buffer.toString('base64');
+    const base64 = buffer.toString("base64");
     const imageUrl = `data:${file.type};base64,${base64}`;
 
     // Create the background image record

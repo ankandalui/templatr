@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@/app/generated/prisma";
+import { PrismaClient } from "@prisma/client";
 import { getUserFromRequest } from "@/lib/auth";
 
 const prisma = new PrismaClient();
@@ -60,13 +60,14 @@ export async function GET(request: NextRequest) {
       exists: folderExists || templateExists,
       folderExists,
       templateExists,
-      message: folderExists && templateExists
-        ? "Both folder and template with this name exist"
-        : folderExists
-        ? "A folder with this name already exists"
-        : templateExists
-        ? "A template with this name already exists"
-        : "Name is available",
+      message:
+        folderExists && templateExists
+          ? "Both folder and template with this name exist"
+          : folderExists
+          ? "A folder with this name already exists"
+          : templateExists
+          ? "A template with this name already exists"
+          : "Name is available",
     });
   } catch (error) {
     console.error("Error checking name:", error);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@/app/generated/prisma";
+import { PrismaClient } from "@prisma/client";
 import { getUserFromRequest } from "@/lib/auth";
 
 const prisma = new PrismaClient();
@@ -45,10 +45,7 @@ export async function GET(
     });
 
     if (!folder) {
-      return NextResponse.json(
-        { error: "Folder not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Folder not found" }, { status: 404 });
     }
 
     // Format the response

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
-import { fetchFolders, createFolder } from "@/store/slices/folderSlice";
+import { fetchFolders } from "@/store/slices/folderSlice";
 import { Navbar } from "@/components/Navbar";
 import {
   Card,
@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+
 import {
   Select,
   SelectContent,
@@ -48,9 +48,7 @@ export default function CreateTemplatePage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
-  const { folders, isLoading: foldersLoading } = useAppSelector(
-    (state) => state.folders
-  );
+  const { folders } = useAppSelector((state) => state.folders);
 
   const [step, setStep] = useState<
     "choice" | "details" | "processing" | "preview"
@@ -68,13 +66,23 @@ export default function CreateTemplatePage() {
   const [selectedBackgroundId, setSelectedBackgroundId] = useState<string>("");
   const [questionImages, setQuestionImages] = useState<File[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
   const [isLoadingImages, setIsLoadingImages] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [createdTemplates, setCreatedTemplates] = useState<any[]>([]);
+  const [createdTemplates, setCreatedTemplates] = useState<
+    Array<{
+      id: string;
+      name: string;
+      [key: string]: unknown;
+    }>
+  >([]);
   const [processingProgress, setProcessingProgress] = useState(0);
-  const [editingTemplate, setEditingTemplate] = useState<any>(null);
+  const [, setEditingTemplate] = useState<{
+    id: string;
+    name: string;
+    [key: string]: unknown;
+  } | null>(null);
   const [newFolderName, setNewFolderName] = useState("");
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
 
@@ -790,7 +798,8 @@ export default function CreateTemplatePage() {
               </h2>
               <p className="text-gray-600">
                 Your {templateType} template
-                {createdTemplates.length > 1 ? "s" : ""} "{templateName}"
+                {createdTemplates.length > 1 ? "s" : ""} &quot;{templateName}
+                &quot;
                 {createdTemplates.length > 1 ? " have" : " has"} been processed
                 and {createdTemplates.length > 1 ? "are" : "is"} ready to use.
               </p>
@@ -844,8 +853,10 @@ export default function CreateTemplatePage() {
                             {/* Background Image */}
                             <img
                               src={
-                                createdTemplates[currentPreviewIndex]
-                                  .backgroundImage.imageUrl
+                                (
+                                  createdTemplates[currentPreviewIndex]
+                                    .backgroundImage as { imageUrl?: string }
+                                )?.imageUrl
                               }
                               alt="Background"
                               className="w-full h-full object-cover"
@@ -858,8 +869,11 @@ export default function CreateTemplatePage() {
                             >
                               <img
                                 src={
-                                  createdTemplates[currentPreviewIndex]
-                                    .questionUrl
+                                  (
+                                    createdTemplates[currentPreviewIndex] as {
+                                      questionUrl?: string;
+                                    }
+                                  ).questionUrl
                                 }
                                 alt="Question"
                                 className="w-full h-auto object-contain"
@@ -1119,7 +1133,13 @@ export default function CreateTemplatePage() {
                       <div className="relative w-full h-full">
                         {/* Background Image */}
                         <img
-                          src={createdTemplates[0].backgroundImage.imageUrl}
+                          src={
+                            (
+                              createdTemplates[0].backgroundImage as {
+                                imageUrl?: string;
+                              }
+                            )?.imageUrl
+                          }
                           alt="Background"
                           className="w-full h-full object-cover"
                         />
@@ -1130,7 +1150,10 @@ export default function CreateTemplatePage() {
                           style={{ width: "70%", maxHeight: "80%" }}
                         >
                           <img
-                            src={createdTemplates[0].questionUrl}
+                            src={
+                              (createdTemplates[0] as { questionUrl?: string })
+                                .questionUrl
+                            }
                             alt="Question"
                             className="w-full h-auto object-contain"
                             style={{
@@ -1154,7 +1177,7 @@ export default function CreateTemplatePage() {
                   </div>
                   <div className="flex gap-3 mt-4">
                     {/* For folder templates, show PPT download even with single image */}
-                    {templateType === "folder" ? (
+                    {(templateType as string) === "folder" ? (
                       <Button
                         className="flex-1"
                         disabled={downloadPptLoading}

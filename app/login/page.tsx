@@ -20,7 +20,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const dispatch = useAppDispatch();
-  const { isLoading, error } = useAppSelector((state) => state.auth);
+  const { isLoading } = useAppSelector((state) => state.auth);
 
   const {
     register,
@@ -155,7 +155,7 @@ export default function LoginPage() {
           {/* Sign Up Link */}
           <div className="text-center">
             <p className="text-xs sm:text-sm text-gray-600 px-2">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <Link
                 href="/signup"
                 className="font-medium text-blue-600 hover:text-blue-700 transition-colors"

@@ -15,13 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import {
-  ArrowLeft,
-  Upload,
-  X,
-  Check,
-  Image as ImageIcon,
-} from "lucide-react";
+import { ArrowLeft, Upload, X, Check, Image as ImageIcon } from "lucide-react";
 
 interface UploadFile {
   file: File;
@@ -33,7 +27,7 @@ interface UploadFile {
 
 export default function UploadImagesPage() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [uploadFiles, setUploadFiles] = useState<UploadFile[]>([]);
@@ -46,7 +40,7 @@ export default function UploadImagesPage() {
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
-    
+
     const newFiles: UploadFile[] = files.map((file) => ({
       file,
       name: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
@@ -116,7 +110,7 @@ export default function UploadImagesPage() {
       } else {
         throw new Error("Upload failed");
       }
-    } catch (error) {
+    } catch {
       setUploadFiles((prev) => {
         const newFiles = [...prev];
         newFiles[index].status = "error";
@@ -128,7 +122,7 @@ export default function UploadImagesPage() {
 
   const uploadAllFiles = async () => {
     setIsUploading(true);
-    
+
     const pendingFiles = uploadFiles
       .map((file, index) => ({ file, index }))
       .filter(({ file }) => file.status === "pending");
@@ -140,7 +134,8 @@ export default function UploadImagesPage() {
     setIsUploading(false);
   };
 
-  const allUploaded = uploadFiles.length > 0 && uploadFiles.every(f => f.status === "success");
+  const allUploaded =
+    uploadFiles.length > 0 && uploadFiles.every((f) => f.status === "success");
   const hasFiles = uploadFiles.length > 0;
 
   return (
@@ -187,7 +182,7 @@ export default function UploadImagesPage() {
                 onChange={handleFileSelect}
                 className="hidden"
               />
-              
+
               <Button
                 onClick={() => fileInputRef.current?.click()}
                 variant="outline"
@@ -197,7 +192,9 @@ export default function UploadImagesPage() {
                 <div className="text-center">
                   <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
                   <p className="text-sm font-medium">Click to select images</p>
-                  <p className="text-xs text-gray-500">or drag and drop files here</p>
+                  <p className="text-xs text-gray-500">
+                    or drag and drop files here
+                  </p>
                 </div>
               </Button>
             </div>
@@ -206,7 +203,9 @@ export default function UploadImagesPage() {
             {hasFiles && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-medium">Selected Images ({uploadFiles.length})</h3>
+                  <h3 className="font-medium">
+                    Selected Images ({uploadFiles.length})
+                  </h3>
                   <div className="flex gap-2">
                     {allUploaded && (
                       <Button
@@ -234,7 +233,7 @@ export default function UploadImagesPage() {
                           alt={fileData.name}
                           className="w-full h-full object-cover"
                         />
-                        
+
                         {/* Status Overlay */}
                         {fileData.status === "uploading" && (
                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -244,16 +243,18 @@ export default function UploadImagesPage() {
                             </div>
                           </div>
                         )}
-                        
+
                         {fileData.status === "success" && (
                           <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
                             <Check className="h-4 w-4" />
                           </div>
                         )}
-                        
+
                         {fileData.status === "error" && (
                           <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
-                            <p className="text-red-600 font-medium">Upload Failed</p>
+                            <p className="text-red-600 font-medium">
+                              Upload Failed
+                            </p>
                           </div>
                         )}
 
@@ -269,21 +270,29 @@ export default function UploadImagesPage() {
                           </Button>
                         )}
                       </div>
-                      
+
                       <CardContent className="p-4">
                         <div className="space-y-2">
                           <Label htmlFor={`name-${index}`}>Image Name</Label>
                           <Input
                             id={`name-${index}`}
                             value={fileData.name}
-                            onChange={(e) => updateFileName(index, e.target.value)}
-                            disabled={fileData.status === "uploading" || fileData.status === "success"}
+                            onChange={(e) =>
+                              updateFileName(index, e.target.value)
+                            }
+                            disabled={
+                              fileData.status === "uploading" ||
+                              fileData.status === "success"
+                            }
                           />
                         </div>
-                        
+
                         {fileData.status === "uploading" && (
                           <div className="mt-2">
-                            <Progress value={fileData.progress} className="h-2" />
+                            <Progress
+                              value={fileData.progress}
+                              className="h-2"
+                            />
                           </div>
                         )}
                       </CardContent>
@@ -297,7 +306,9 @@ export default function UploadImagesPage() {
               <div className="text-center py-12">
                 <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">No images selected</p>
-                <p className="text-sm text-gray-500">Click the upload area to select images</p>
+                <p className="text-sm text-gray-500">
+                  Click the upload area to select images
+                </p>
               </div>
             )}
           </CardContent>

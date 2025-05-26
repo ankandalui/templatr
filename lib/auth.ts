@@ -23,7 +23,7 @@ export function verifyToken(token: string): { userId: string } | null {
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
     return decoded;
-  } catch (error) {
+  } catch {
     return null;
   }
 }

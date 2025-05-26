@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/store/hooks";
 import { Navbar } from "@/components/Navbar";
@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,23 +60,20 @@ export default function BackgroundImagesPage() {
   const { toast } = useToast();
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 
-  const [backgroundImages, setBackgroundImages] = useState<BackgroundImage[]>([]);
+  const [backgroundImages, setBackgroundImages] = useState<BackgroundImage[]>(
+    []
+  );
   const [isLoading, setIsLoading] = useState(true);
-  const [downloadingImages, setDownloadingImages] = useState<Set<string>>(new Set());
+  const [downloadingImages, setDownloadingImages] = useState<Set<string>>(
+    new Set()
+  );
   const [deletingImages, setDeletingImages] = useState<Set<string>>(new Set());
-  const [imageToDelete, setImageToDelete] = useState<BackgroundImage | null>(null);
+  const [imageToDelete, setImageToDelete] = useState<BackgroundImage | null>(
+    null
+  );
   const [deleteError, setDeleteError] = useState<DeleteError | null>(null);
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-      return;
-    }
-
-    fetchBackgroundImages();
-  }, [isAuthenticated, router]);
-
-  const fetchBackgroundImages = async () => {
+  const fetchBackgroundImages = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch("/api/background-images", {
@@ -99,7 +96,16 @@ export default function BackgroundImagesPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+
+    fetchBackgroundImages();
+  }, [isAuthenticated, router, fetchBackgroundImages]);
 
   const handleDownloadImage = async (imageId: string, imageName: string) => {
     setDownloadingImages((prev) => new Set(prev).add(imageId));
@@ -127,7 +133,7 @@ export default function BackgroundImagesPage() {
         title: "Download started",
         description: `"${imageName}" is being downloaded.`,
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Download failed",
         description: "Failed to download image. Please try again.",
@@ -152,10 +158,13 @@ export default function BackgroundImagesPage() {
 
     setDeletingImages((prev) => new Set(prev).add(imageToDelete.id));
     try {
-      const response = await fetch(`/api/background-images/${imageToDelete.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      const response = await fetch(
+        `/api/background-images/${imageToDelete.id}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -174,7 +183,7 @@ export default function BackgroundImagesPage() {
       // Refresh the images list
       fetchBackgroundImages();
       setImageToDelete(null);
-    } catch (error) {
+    } catch {
       toast({
         title: "Delete failed",
         description: "Failed to delete image. Please try again.",
@@ -252,7 +261,8 @@ export default function BackgroundImagesPage() {
               No background images yet
             </h2>
             <p className="text-gray-600 mb-6 text-center max-w-md">
-              Upload your first background image to start creating amazing templates.
+              Upload your first background image to start creating amazing
+              templates.
             </p>
             <Button
               onClick={() => router.push("/upload-images")}
@@ -288,11 +298,15 @@ export default function BackgroundImagesPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => handleDownloadImage(image.id, image.name)}
+                          onClick={() =>
+                            handleDownloadImage(image.id, image.name)
+                          }
                           disabled={downloadingImages.has(image.id)}
                         >
                           <Download className="mr-2 h-4 w-4" />
-                          {downloadingImages.has(image.id) ? "Downloading..." : "Download"}
+                          {downloadingImages.has(image.id)
+                            ? "Downloading..."
+                            : "Download"}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-red-600"
@@ -300,14 +314,18 @@ export default function BackgroundImagesPage() {
                           disabled={deletingImages.has(image.id)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          {deletingImages.has(image.id) ? "Deleting..." : "Delete"}
+                          {deletingImages.has(image.id)
+                            ? "Deleting..."
+                            : "Delete"}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
                 </div>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base truncate">{image.name}</CardTitle>
+                  <CardTitle className="text-base truncate">
+                    {image.name}
+                  </CardTitle>
                   <CardDescription className="text-sm">
                     Uploaded on {new Date(image.createdAt).toLocaleDateString()}
                   </CardDescription>
@@ -321,7 +339,9 @@ export default function BackgroundImagesPage() {
                       disabled={downloadingImages.has(image.id)}
                       onClick={() => handleDownloadImage(image.id, image.name)}
                     >
-                      {downloadingImages.has(image.id) ? "Downloading..." : "Download"}
+                      {downloadingImages.has(image.id)
+                        ? "Downloading..."
+                        : "Download"}
                     </Button>
                   </div>
                 </CardContent>
@@ -349,7 +369,7 @@ export default function BackgroundImagesPage() {
               {imageToDelete && (
                 <>
                   Are you sure you want to delete{" "}
-                  <strong>"{imageToDelete.name}"</strong>?
+                  <strong>&quot;{imageToDelete.name}&quot;</strong>?
                 </>
               )}
             </AlertDialogDescription>
@@ -361,13 +381,20 @@ export default function BackgroundImagesPage() {
                   <AlertTriangle className="h-4 w-4" />
                   <span className="font-medium">Cannot Delete</span>
                 </div>
-                <p className="text-red-700 text-sm mt-1">{deleteError.message}</p>
+                <p className="text-red-700 text-sm mt-1">
+                  {deleteError.message}
+                </p>
                 {deleteError.templates.length > 0 && (
                   <div className="mt-2">
-                    <p className="text-red-700 text-sm font-medium">Templates using this image:</p>
+                    <p className="text-red-700 text-sm font-medium">
+                      Templates using this image:
+                    </p>
                     <ul className="text-red-700 text-sm mt-1 space-y-1">
                       {deleteError.templates.map((template) => (
-                        <li key={template.id} className="flex items-center gap-2">
+                        <li
+                          key={template.id}
+                          className="flex items-center gap-2"
+                        >
                           • {template.name}
                         </li>
                       ))}
@@ -386,9 +413,13 @@ export default function BackgroundImagesPage() {
             <AlertDialogAction
               onClick={confirmDeleteImage}
               className="bg-red-600 hover:bg-red-700"
-              disabled={!!deleteError || deletingImages.has(imageToDelete?.id || "")}
+              disabled={
+                !!deleteError || deletingImages.has(imageToDelete?.id || "")
+              }
             >
-              {deletingImages.has(imageToDelete?.id || "") ? "Deleting..." : "Delete Image"}
+              {deletingImages.has(imageToDelete?.id || "")
+                ? "Deleting..."
+                : "Delete Image"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

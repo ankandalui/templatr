@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@/app/generated/prisma";
+import { PrismaClient } from "@prisma/client";
 import { getUserFromRequest } from "@/lib/auth";
 
 const prisma = new PrismaClient();
@@ -100,11 +100,13 @@ export async function GET(
         });
       } catch (canvasError) {
         console.error("Error generating thumbnail:", canvasError);
-        
+
         // Fallback to background image only
         if (template.backgroundImage?.imageUrl) {
           try {
-            const imageResponse = await fetch(template.backgroundImage.imageUrl);
+            const imageResponse = await fetch(
+              template.backgroundImage.imageUrl
+            );
             if (imageResponse.ok) {
               const imageBuffer = await imageResponse.arrayBuffer();
               return new NextResponse(imageBuffer, {

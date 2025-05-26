@@ -256,7 +256,7 @@ export function CreateFolderModal({
                     Folder Created Successfully!
                   </h3>
                   <p className="text-gray-600">
-                    "{folderName}" is ready for templates.
+                    &quot;{folderName}&quot; is ready for templates.
                   </p>
                 </div>
               </div>

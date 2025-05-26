@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@/app/generated/prisma";
+import { PrismaClient } from "@prisma/client";
 import { getUserFromRequest } from "@/lib/auth";
 
 const prisma = new PrismaClient();
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       id: template.id,
       name: template.name,
       description: template.description,
-      backgroundUrl: template.backgroundUrl,
+      backgroundUrl: template.backgroundImage?.imageUrl,
       backgroundImage: template.backgroundImage,
       questionUrl: template.questionUrl,
       thumbnailUrl: template.thumbnailUrl,

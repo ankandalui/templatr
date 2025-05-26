@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import { useAppSelector } from "@/store/hooks";
 import { Navbar } from "@/components/Navbar";
 import {
   Card,
@@ -83,19 +83,7 @@ export default function FolderPage({
     getFolderId();
   }, [params]);
 
-  // Fetch folder data
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-      return;
-    }
-
-    if (folderId) {
-      fetchFolderData();
-    }
-  }, [isAuthenticated, folderId, router]);
-
-  const fetchFolderData = async () => {
+  const fetchFolderData = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/folders/${folderId}/templates`, {
@@ -127,7 +115,19 @@ export default function FolderPage({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [folderId, toast, router]);
+
+  // Fetch folder data
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+
+    if (folderId) {
+      fetchFolderData();
+    }
+  }, [isAuthenticated, folderId, router, fetchFolderData]);
 
   const handleCreateTemplate = () => {
     router.push(`/create-template?folder=${folderId}`);
@@ -163,7 +163,7 @@ export default function FolderPage({
 
       // Refresh folder data
       fetchFolderData();
-    } catch (error) {
+    } catch {
       toast({
         title: "Error deleting template",
         description: "Failed to delete template. Please try again.",
@@ -202,7 +202,7 @@ export default function FolderPage({
         title: "Download started",
         description: `"${templateName}" is being downloaded.`,
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Download failed",
         description: "Failed to download template. Please try again.",
@@ -266,7 +266,7 @@ export default function FolderPage({
       } else {
         throw new Error("Failed to download PowerPoint");
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Download failed",
         description: "Failed to download PowerPoint. Please try again.",
@@ -315,7 +315,7 @@ export default function FolderPage({
         title: "Download started",
         description: `All ${folderData.templates.length} images from "${folderData.name}" are being downloaded.`,
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Download failed",
         description: "Failed to download images. Please try again.",
@@ -354,7 +354,7 @@ export default function FolderPage({
               Folder not found
             </h2>
             <p className="text-gray-600 mb-4">
-              The folder you're looking for doesn't exist.
+              The folder you&apos;re looking for doesn&apos;t exist.
             </p>
             <Button onClick={() => router.push("/dashboard")}>
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -478,6 +478,7 @@ export default function FolderPage({
                 <div className="aspect-video bg-gray-100 relative">
                   <TemplateThumbnail
                     templateId={template.id}
+                    templateName={template.name}
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute top-3 right-3">

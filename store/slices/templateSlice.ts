@@ -57,7 +57,7 @@ const initialState: TemplateState = {
 // Async thunks
 export const fetchTemplates = createAsyncThunk(
   "templates/fetchTemplates",
-  async (folderId?: string, { rejectWithValue }) => {
+  async (folderId: string | undefined, { rejectWithValue }) => {
     try {
       const url = folderId
         ? `/api/templates?folderId=${folderId}`
@@ -125,7 +125,7 @@ export const createTemplate = createAsyncThunk(
       name: string;
       description?: string;
       folderId?: string;
-      backgroundUrl?: string;
+      backgroundImageId?: string;
       questionUrl?: string;
     },
     { rejectWithValue }

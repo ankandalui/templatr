@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@/app/generated/prisma";
+import { PrismaClient } from "@prisma/client";
 import { getUserFromRequest } from "@/lib/auth";
 
 const prisma = new PrismaClient();
@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 // Array of gradient color combinations for folders
 const folderColors = [
   "from-blue-500 to-blue-600",
-  "from-purple-500 to-purple-600", 
+  "from-purple-500 to-purple-600",
   "from-green-500 to-green-600",
   "from-red-500 to-red-600",
   "from-yellow-500 to-yellow-600",
@@ -54,9 +54,9 @@ export async function POST(request: NextRequest) {
 
     await Promise.all(updatePromises);
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: "Folder colors updated successfully",
-      updatedCount: folders.length 
+      updatedCount: folders.length,
     });
   } catch (error) {
     console.error("Error updating folder colors:", error);

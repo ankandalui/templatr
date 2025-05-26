@@ -3,7 +3,7 @@
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { Navbar } from "@/components/Navbar";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { fetchFolders, deleteFolder } from "@/store/slices/folderSlice";
 import {
   fetchRecentTemplates,
@@ -61,7 +61,6 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { TemplateThumbnail } from "@/components/TemplateThumbnail";
 import { CreateFolderModal } from "@/components/CreateFolderModal";
-import Image from "next/image";
 
 export default function DashboardPage() {
   const dispatch = useAppDispatch();
@@ -69,11 +68,9 @@ export default function DashboardPage() {
   const { user, isLoading, isAuthenticated } = useAppSelector(
     (state) => state.auth
   );
-  const {
-    folders,
-    isLoading: foldersLoading,
-    deleteLoading: folderDeleteLoading,
-  } = useAppSelector((state) => state.folders);
+  const { folders, isLoading: foldersLoading } = useAppSelector(
+    (state) => state.folders
+  );
   const {
     recentTemplates,
     stats,
@@ -101,20 +98,8 @@ export default function DashboardPage() {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      // Fetch data when user is authenticated
-      dispatch(fetchFolders());
-      dispatch(fetchRecentTemplates(6));
-      dispatch(fetchTemplateStats());
-
-      // Update folder colors on first load (temporary)
-      updateFolderColors();
-    }
-  }, [isAuthenticated, user, dispatch]);
-
   // Temporary function to update existing folder colors
-  const updateFolderColors = async () => {
+  const updateFolderColors = useCallback(async () => {
     try {
       const response = await fetch("/api/folders/update-colors", {
         method: "POST",
@@ -125,10 +110,22 @@ export default function DashboardPage() {
         // Refresh folders to see new colors
         dispatch(fetchFolders());
       }
-    } catch (error) {
-      console.log("Error updating folder colors:", error);
+    } catch {
+      console.log("Error updating folder colors");
     }
-  };
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      // Fetch data when user is authenticated
+      dispatch(fetchFolders());
+      dispatch(fetchRecentTemplates(6));
+      dispatch(fetchTemplateStats());
+
+      // Update folder colors on first load (temporary)
+      updateFolderColors();
+    }
+  }, [isAuthenticated, user, dispatch, updateFolderColors]);
 
   const handleEditTemplate = (templateId: string) => {
     router.push(`/create-template?edit=${templateId}`);
@@ -203,7 +200,7 @@ export default function DashboardPage() {
         title: "Download Started",
         description: `"${templateName}" is being downloaded.`,
       });
-    } catch (error) {
+    } catch {
       toast({
         variant: "destructive",
         title: "Download Failed",
@@ -304,7 +301,10 @@ export default function DashboardPage() {
           <div className="flex gap-3">
             <Button
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              onClick={() => router.push("/create-template")}
+              onClick={() => {
+                console.log("New Template button clicked!");
+                router.push("/create-template");
+              }}
             >
               <Plus className="w-4 h-4 mr-2" />
               New Template
@@ -471,7 +471,7 @@ export default function DashboardPage() {
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     <div className="flex-1">
                       <p className="text-sm font-medium">
-                        Template "Math Quiz" created
+                        Template &quot;Math Quiz&quot; created
                       </p>
                       <p className="text-xs text-muted-foreground">
                         2 hours ago
@@ -989,7 +989,7 @@ export default function DashboardPage() {
               {folderToDelete && (
                 <>
                   Are you sure you want to delete{" "}
-                  <strong>"{folderToDelete.name}"</strong>?
+                  <strong>&quot;{folderToDelete.name}&quot;</strong>?
                 </>
               )}
             </AlertDialogDescription>

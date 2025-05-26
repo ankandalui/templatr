@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@/app/generated/prisma";
 import { getUserFromRequest } from "@/lib/auth";
-
-const prisma = new PrismaClient();
+import prisma, { withRetry } from "@/lib/prisma";
 
 // GET /api/folders - Get all folders for the authenticated user
 export async function GET(request: NextRequest) {
@@ -12,21 +10,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const folders = await prisma.folder.findMany({
-      where: {
-        userId: user.userId,
-      },
-      include: {
-        _count: {
-          select: {
-            templates: true,
+    const folders = await withRetry(() =>
+      prisma.folder.findMany({
+        where: {
+          userId: user.userId,
+        },
+        include: {
+          _count: {
+            select: {
+              templates: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+        orderBy: {
+          createdAt: "desc",
+        },
+      })
+    );
 
     // Transform the data to include template count
     const foldersWithCount = folders.map((folder) => ({
@@ -69,14 +69,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if folder with same name already exists for this user
-    const existingFolder = await prisma.folder.findUnique({
-      where: {
-        userId_name: {
-          userId: user.userId,
-          name: name.trim(),
+    const existingFolder = await withRetry(() =>
+      prisma.folder.findUnique({
+        where: {
+          userId_name: {
+            userId: user.userId,
+            name: name.trim(),
+          },
         },
-      },
-    });
+      })
+    );
 
     if (existingFolder) {
       return NextResponse.json(
@@ -86,21 +88,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the folder
-    const folder = await prisma.folder.create({
-      data: {
-        name: name.trim(),
-        description: description?.trim() || null,
-        color: color || "from-blue-500 to-blue-600",
-        userId: user.userId,
-      },
-      include: {
-        _count: {
-          select: {
-            templates: true,
+    const folder = await withRetry(() =>
+      prisma.folder.create({
+        data: {
+          name: name.trim(),
+          description: description?.trim() || null,
+          color: color || "from-blue-500 to-blue-600",
+          userId: user.userId,
+        },
+        include: {
+          _count: {
+            select: {
+              templates: true,
+            },
           },
         },
-      },
-    });
+      })
+    );
 
     // Transform the response
     const folderResponse = {

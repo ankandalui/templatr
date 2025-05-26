@@ -1,4 +1,4 @@
-import { PrismaClient } from "@/app/generated/prisma";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -7,7 +7,7 @@ async function main() {
 
   // Get the first user (assuming you have a user already)
   const user = await prisma.user.findFirst();
-  
+
   if (!user) {
     console.log("❌ No user found. Please create a user first.");
     return;
@@ -46,7 +46,7 @@ async function main() {
 
   console.log("📁 Creating folders...");
   const createdFolders = [];
-  
+
   for (const folderData of folders) {
     try {
       const folder = await prisma.folder.create({
@@ -58,7 +58,9 @@ async function main() {
       createdFolders.push(folder);
       console.log(`✅ Created folder: ${folder.name}`);
     } catch (error) {
-      console.log(`⚠️ Folder "${folderData.name}" might already exist, skipping...`);
+      console.log(
+        `⚠️ Folder "${folderData.name}" might already exist, skipping...`
+      );
     }
   }
 
@@ -115,11 +117,11 @@ async function main() {
   ];
 
   console.log("📄 Creating templates...");
-  
+
   for (let i = 0; i < templates.length; i++) {
     const templateData = templates[i];
     const folder = createdFolders[i % createdFolders.length]; // Distribute templates across folders
-    
+
     try {
       const template = await prisma.template.create({
         data: {
@@ -128,9 +130,15 @@ async function main() {
           folderId: folder?.id,
         },
       });
-      console.log(`✅ Created template: ${template.name} in folder: ${folder?.name || 'No folder'}`);
+      console.log(
+        `✅ Created template: ${template.name} in folder: ${
+          folder?.name || "No folder"
+        }`
+      );
     } catch (error) {
-      console.log(`⚠️ Template "${templateData.name}" might already exist, skipping...`);
+      console.log(
+        `⚠️ Template "${templateData.name}" might already exist, skipping...`
+      );
     }
   }
 
@@ -144,7 +152,7 @@ async function main() {
   ];
 
   console.log("🖼️ Creating question images...");
-  
+
   for (const imageData of questionImages) {
     try {
       const questionImage = await prisma.questionImage.create({
@@ -155,7 +163,9 @@ async function main() {
       });
       console.log(`✅ Created question image: ${questionImage.name}`);
     } catch (error) {
-      console.log(`⚠️ Question image "${imageData.name}" might already exist, skipping...`);
+      console.log(
+        `⚠️ Question image "${imageData.name}" might already exist, skipping...`
+      );
     }
   }
 
