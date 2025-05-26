@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" NEXT_TELEMETRY_DISABLED=1 next build",
-    "build:safe": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" NEXT_TELEMETRY_DISABLED=1 WEBPACK_DISABLE_FILE_SYSTEM_CACHE=1 next build --no-lint",
-    "build:windows": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" NEXT_TELEMETRY_DISABLED=1 TMPDIR=\"./temp\" TMP=\"./temp\" TEMP=\"./temp\" next build --no-lint",
+    "build": "prisma generate && cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" NEXT_TELEMETRY_DISABLED=1 next build",
+    "build:safe": "prisma generate && cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" NEXT_TELEMETRY_DISABLED=1 WEBPACK_DISABLE_FILE_SYSTEM_CACHE=1 next build --no-lint",
+    "build:windows": "prisma generate && cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" NEXT_TELEMETRY_DISABLED=1 TMPDIR=\"./temp\" TMP=\"./temp\" TEMP=\"./temp\" next build --no-lint",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
