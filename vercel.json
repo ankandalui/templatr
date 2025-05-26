@@ -1,12 +1,7 @@
 {
-  "buildCommand": "prisma generate && npm run build",
-  "installCommand": "npm install && prisma generate",
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 30
     }
-  },
-  "env": {
-    "PRISMA_GENERATE_SKIP_AUTOINSTALL": "true"
   }
 }
