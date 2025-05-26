@@ -64,4 +64,14 @@ export async function withRetry<T>(
   throw lastError!;
 }
 
+// Simple health check function
+export async function checkDatabaseHealth(): Promise<boolean> {
+  try {
+    await withRetry(() => prisma.$queryRaw`SELECT 1`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default prisma;
