@@ -5,8 +5,17 @@ import { useParams } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, ArrowLeft } from "lucide-react";
+import { Download, ArrowLeft, Edit3, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { ImageEditorWrapper } from "@/components/ImageEditorWrapper";
+import {
+  ImagePosition,
+  CropArea,
+  createMergedCanvas,
+  downloadCanvasAsImage,
+  loadImage,
+  DEFAULT_POSITION,
+} from "@/lib/imageUtils";
 
 interface Template {
   id: string;
@@ -37,6 +46,14 @@ export default function TemplatePreviewPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloadLoading, setDownloadLoading] = useState(false);
+  const [useImageEditor, setUseImageEditor] = useState(false);
+  const [imagePosition, setImagePosition] = useState<ImagePosition | null>(
+    null
+  );
+  const [hasSavedChanges, setHasSavedChanges] = useState(false);
+  const [savedPosition, setSavedPosition] =
+    useState<ImagePosition>(DEFAULT_POSITION);
+  const [savedCropArea, setSavedCropArea] = useState<CropArea | null>(null);
 
   useEffect(() => {
     if (templateId) {
@@ -67,25 +84,58 @@ export default function TemplatePreviewPage() {
     }
   };
 
+  const handleSavedChangesUpdate = (
+    hasSaved: boolean,
+    position: ImagePosition,
+    cropArea: CropArea | null
+  ) => {
+    setHasSavedChanges(hasSaved);
+    setSavedPosition(position);
+    setSavedCropArea(cropArea);
+  };
+
   const handleDownload = async () => {
     if (!template) return;
 
     setDownloadLoading(true);
     try {
-      const response = await fetch(`/api/templates/${template.id}/download`, {
-        credentials: "include",
-      });
+      if (hasSavedChanges && template.backgroundImage && template.questionUrl) {
+        // Download edited version using canvas
+        const [backgroundImg, questionImg] = await Promise.all([
+          loadImage(template.backgroundImage.imageUrl),
+          loadImage(template.questionUrl),
+        ]);
 
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${template.name}.png`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        const canvas = createMergedCanvas(
+          backgroundImg,
+          questionImg,
+          savedPosition,
+          800, // containerWidth
+          450, // containerHeight
+          savedCropArea || undefined
+        );
+
+        const filename = `${template.name
+          .replace(/[^a-z0-9]/gi, "_")
+          .toLowerCase()}.png`;
+        downloadCanvasAsImage(canvas, filename);
+      } else {
+        // Download original template
+        const response = await fetch(`/api/templates/${template.id}/download`, {
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${template.name}.png`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        }
       }
     } catch (error) {
       console.error("Error downloading template:", error);
@@ -158,50 +208,84 @@ export default function TemplatePreviewPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl">{template.name}</CardTitle>
-              <Button
-                onClick={handleDownload}
-                disabled={downloadLoading}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {downloadLoading ? "Downloading..." : "Download Template"}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant={useImageEditor ? "outline" : "default"}
+                  size="sm"
+                  onClick={() => setUseImageEditor(!useImageEditor)}
+                  className="flex items-center gap-2"
+                >
+                  {useImageEditor ? (
+                    <Eye className="h-4 w-4" />
+                  ) : (
+                    <Edit3 className="h-4 w-4" />
+                  )}
+                  {useImageEditor ? "Preview Mode" : "Edit Mode"}
+                </Button>
+                <Button
+                  onClick={handleDownload}
+                  disabled={downloadLoading}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {downloadLoading
+                    ? "Downloading..."
+                    : hasSavedChanges
+                    ? "Download Edited"
+                    : "Download Template"}
+                </Button>
+              </div>
             </div>
             {template.folderName && (
               <p className="text-sm text-gray-600">📁 {template.folderName}</p>
             )}
           </CardHeader>
           <CardContent>
-            <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 mb-4">
-              {template.backgroundImage ? (
-                <div className="relative w-full h-full">
-                  {/* Background Image */}
-                  <img
-                    src={template.backgroundImage.imageUrl}
-                    alt="Background"
-                    className="w-full h-full object-cover"
-                  />
-
-                  {/* Question Image Overlay - Top Left Corner */}
-                  {template.questionUrl && (
-                    <div
-                      className="absolute top-4 left-4"
-                      style={{ width: "70%", maxHeight: "80%" }}
-                    >
-                      <img
-                        src={template.questionUrl}
-                        alt="Question"
-                        className="w-full h-auto object-contain"
-                        style={{
-                          maxWidth: "100%",
-                          maxHeight: "100%",
-                          objectFit: "contain",
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
+            {template.backgroundImage && template.questionUrl ? (
+              useImageEditor ? (
+                <ImageEditorWrapper
+                  backgroundImageUrl={template.backgroundImage.imageUrl}
+                  questionImageUrl={template.questionUrl}
+                  templateName={template.name}
+                  containerWidth={800}
+                  containerHeight={450}
+                  onPositionChange={setImagePosition}
+                  onSavedChangesUpdate={handleSavedChangesUpdate}
+                  autoStartEdit={true}
+                />
               ) : (
+                <div className="mb-4">
+                  <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
+                    <div className="relative w-full h-full">
+                      {/* Background Image */}
+                      <img
+                        src={template.backgroundImage.imageUrl}
+                        alt="Background"
+                        className="w-full h-full object-cover"
+                      />
+
+                      {/* Question Image Overlay - Top Left Corner */}
+                      <div
+                        className="absolute top-4 left-4"
+                        style={{ width: "70%", maxHeight: "80%" }}
+                      >
+                        <img
+                          src={template.questionUrl}
+                          alt="Question"
+                          className="w-full h-auto object-contain"
+                          style={{
+                            maxWidth: "100%",
+                            maxHeight: "100%",
+                            objectFit: "contain",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            ) : (
+              <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 mb-4">
                 <div className="w-full h-full flex items-center justify-center">
                   <div className="text-center">
                     <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center mx-auto mb-4">
@@ -222,8 +306,8 @@ export default function TemplatePreviewPage() {
                     <p className="text-gray-600">No preview available</p>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Template Stats */}
             <div className="flex items-center justify-between text-sm text-gray-600">

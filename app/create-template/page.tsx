@@ -35,7 +35,17 @@ import {
   FileImage,
   Download,
   Eye,
+  Edit3,
 } from "lucide-react";
+import { ImageEditorWrapper } from "@/components/ImageEditorWrapper";
+import {
+  ImagePosition,
+  CropArea,
+  createMergedCanvas,
+  downloadCanvasAsImage,
+  loadImage,
+  DEFAULT_POSITION,
+} from "@/lib/imageUtils";
 
 interface BackgroundImage {
   id: string;
@@ -85,6 +95,19 @@ export default function CreateTemplatePage() {
   } | null>(null);
   const [newFolderName, setNewFolderName] = useState("");
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
+  const [useImageEditor, setUseImageEditor] = useState(false);
+  const [imagePosition, setImagePosition] = useState<ImagePosition | null>(
+    null
+  );
+  const [hasSavedChanges, setHasSavedChanges] = useState<{
+    [key: string]: boolean;
+  }>({});
+  const [savedPositions, setSavedPositions] = useState<{
+    [key: string]: ImagePosition;
+  }>({});
+  const [savedCropAreas, setSavedCropAreas] = useState<{
+    [key: string]: CropArea | null;
+  }>({});
 
   // Loading states for buttons
   const [downloadPptLoading, setDownloadPptLoading] = useState(false);
@@ -363,6 +386,60 @@ export default function CreateTemplatePage() {
     setCurrentImageIndex((prev) =>
       prev === 0 ? backgroundImages.length - 1 : prev - 1
     );
+  };
+
+  const handleSavedChangesUpdate =
+    (templateId: string) =>
+    (hasSaved: boolean, position: ImagePosition, cropArea: CropArea | null) => {
+      setHasSavedChanges((prev) => ({ ...prev, [templateId]: hasSaved }));
+      setSavedPositions((prev) => ({ ...prev, [templateId]: position }));
+      setSavedCropAreas((prev) => ({ ...prev, [templateId]: cropArea }));
+    };
+
+  const downloadTemplateWithEdits = async (template: any) => {
+    const templateId = template.id;
+    const hasEdits = hasSavedChanges[templateId];
+
+    if (hasEdits && template.backgroundImage && template.questionUrl) {
+      // Download edited version using canvas
+      const [backgroundImg, questionImg] = await Promise.all([
+        loadImage(template.backgroundImage.imageUrl),
+        loadImage(template.questionUrl),
+      ]);
+
+      const canvas = createMergedCanvas(
+        backgroundImg,
+        questionImg,
+        savedPositions[templateId] || DEFAULT_POSITION,
+        800, // containerWidth
+        450, // containerHeight
+        savedCropAreas[templateId] || undefined
+      );
+
+      const filename = `${template.name
+        .replace(/[^a-z0-9]/gi, "_")
+        .toLowerCase()}.png`;
+      downloadCanvasAsImage(canvas, filename);
+    } else {
+      // Download original template
+      const response = await fetch(`/api/templates/${templateId}/download`, {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${template.name}.png`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        throw new Error("Failed to download template");
+      }
+    }
   };
 
   const handleFileUpload = async (
@@ -836,56 +913,100 @@ export default function CreateTemplatePage() {
                         image overlaid on background
                       </CardDescription>
                     </div>
-                    <Badge variant="outline" className="text-sm">
-                      {currentPreviewIndex + 1} / {createdTemplates.length}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={useImageEditor ? "outline" : "default"}
+                        size="sm"
+                        onClick={() => setUseImageEditor(!useImageEditor)}
+                        className="flex items-center gap-2"
+                      >
+                        {useImageEditor ? (
+                          <Eye className="h-4 w-4" />
+                        ) : (
+                          <Edit3 className="h-4 w-4" />
+                        )}
+                        {useImageEditor ? "Preview" : "Edit"}
+                      </Button>
+                      <Badge variant="outline" className="text-sm">
+                        {currentPreviewIndex + 1} / {createdTemplates.length}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {/* Template Preview */}
                     <div className="relative">
-                      <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
-                        {createdTemplates[currentPreviewIndex]
-                          ?.backgroundImage &&
-                        createdTemplates[currentPreviewIndex]?.questionUrl ? (
-                          <div className="relative w-full h-full">
-                            {/* Background Image */}
-                            <img
-                              src={
-                                (
-                                  createdTemplates[currentPreviewIndex]
-                                    .backgroundImage as { imageUrl?: string }
-                                )?.imageUrl
-                              }
-                              alt="Background"
-                              className="w-full h-full object-cover"
-                            />
-
-                            {/* Question Image Overlay - Top Left Corner */}
-                            <div
-                              className="absolute top-4 left-4"
-                              style={{ width: "70%", maxHeight: "80%" }}
-                            >
+                      {createdTemplates[currentPreviewIndex]?.backgroundImage &&
+                      createdTemplates[currentPreviewIndex]?.questionUrl ? (
+                        useImageEditor ? (
+                          <ImageEditorWrapper
+                            backgroundImageUrl={
+                              (
+                                createdTemplates[currentPreviewIndex]
+                                  .backgroundImage as { imageUrl?: string }
+                              )?.imageUrl || ""
+                            }
+                            questionImageUrl={
+                              (
+                                createdTemplates[currentPreviewIndex] as {
+                                  questionUrl?: string;
+                                }
+                              ).questionUrl || ""
+                            }
+                            templateName={
+                              createdTemplates[currentPreviewIndex]?.name || ""
+                            }
+                            containerWidth={800}
+                            containerHeight={450}
+                            onPositionChange={setImagePosition}
+                            onSavedChangesUpdate={handleSavedChangesUpdate(
+                              createdTemplates[currentPreviewIndex]?.id || ""
+                            )}
+                            autoStartEdit={true}
+                          />
+                        ) : (
+                          <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
+                            <div className="relative w-full h-full">
+                              {/* Background Image */}
                               <img
                                 src={
                                   (
-                                    createdTemplates[currentPreviewIndex] as {
-                                      questionUrl?: string;
-                                    }
-                                  ).questionUrl
+                                    createdTemplates[currentPreviewIndex]
+                                      .backgroundImage as { imageUrl?: string }
+                                  )?.imageUrl
                                 }
-                                alt="Question"
-                                className="w-full h-auto object-contain"
-                                style={{
-                                  maxWidth: "100%",
-                                  maxHeight: "100%",
-                                  objectFit: "contain",
-                                }}
+                                alt="Background"
+                                className="w-full h-full object-cover"
                               />
+
+                              {/* Question Image Overlay - Top Left Corner */}
+                              <div
+                                className="absolute top-4 left-4"
+                                style={{ width: "70%", maxHeight: "80%" }}
+                              >
+                                <img
+                                  src={
+                                    (
+                                      createdTemplates[currentPreviewIndex] as {
+                                        questionUrl?: string;
+                                      }
+                                    ).questionUrl
+                                  }
+                                  alt="Question"
+                                  className="w-full h-auto object-contain"
+                                  style={{
+                                    maxWidth: "100%",
+                                    maxHeight: "100%",
+                                    objectFit: "contain",
+                                  }}
+                                />
+                              </div>
                             </div>
                           </div>
-                        ) : (
+                        )
+                      ) : (
+                        <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
                           <div className="w-full h-full flex items-center justify-center">
                             <div className="text-center">
                               <FileImage className="h-12 w-12 text-gray-400 mx-auto mb-2" />
@@ -894,8 +1015,8 @@ export default function CreateTemplatePage() {
                               </p>
                             </div>
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
                       {/* Navigation Arrows */}
                       {createdTemplates.length > 1 && (
@@ -1005,26 +1126,7 @@ export default function CreateTemplatePage() {
                             const template =
                               createdTemplates[currentPreviewIndex];
                             try {
-                              const response = await fetch(
-                                `/api/templates/${template.id}/download`,
-                                {
-                                  credentials: "include",
-                                }
-                              );
-
-                              if (response.ok) {
-                                const blob = await response.blob();
-                                const url = window.URL.createObjectURL(blob);
-                                const a = document.createElement("a");
-                                a.href = url;
-                                a.download = `${template.name}.png`;
-                                document.body.appendChild(a);
-                                a.click();
-                                window.URL.revokeObjectURL(url);
-                                document.body.removeChild(a);
-                              } else {
-                                alert("Failed to download template");
-                              }
+                              await downloadTemplateWithEdits(template);
                             } catch (error) {
                               console.error(
                                 "Error downloading template:",
@@ -1044,6 +1146,10 @@ export default function CreateTemplatePage() {
                             : "Download as PowerPoint"
                           : downloadSingleLoading
                           ? "Downloading..."
+                          : hasSavedChanges[
+                              createdTemplates[currentPreviewIndex]?.id
+                            ]
+                          ? "Download Edited Template"
                           : "Download This Template"}
                       </Button>
                       <Button
@@ -1070,29 +1176,11 @@ export default function CreateTemplatePage() {
                             // Download all templates as individual images
                             for (const template of createdTemplates) {
                               try {
-                                const response = await fetch(
-                                  `/api/templates/${template.id}/download`,
-                                  {
-                                    credentials: "include",
-                                  }
+                                await downloadTemplateWithEdits(template);
+                                // Small delay between downloads
+                                await new Promise((resolve) =>
+                                  setTimeout(resolve, 500)
                                 );
-
-                                if (response.ok) {
-                                  const blob = await response.blob();
-                                  const url = window.URL.createObjectURL(blob);
-                                  const a = document.createElement("a");
-                                  a.href = url;
-                                  a.download = `${template.name}.png`;
-                                  document.body.appendChild(a);
-                                  a.click();
-                                  window.URL.revokeObjectURL(url);
-                                  document.body.removeChild(a);
-
-                                  // Small delay between downloads
-                                  await new Promise((resolve) =>
-                                    setTimeout(resolve, 500)
-                                  );
-                                }
                               } catch (error) {
                                 console.error(
                                   "Error downloading template:",
@@ -1118,53 +1206,100 @@ export default function CreateTemplatePage() {
               /* Single Template - Standard View (Only for Standalone Templates) */
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileImage className="h-5 w-5" />
-                    {createdTemplates[0]?.name}
-                  </CardTitle>
-                  <CardDescription>
-                    Final template with question image overlaid on background
-                  </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileImage className="h-5 w-5" />
+                        {createdTemplates[0]?.name}
+                      </CardTitle>
+                      <CardDescription>
+                        Final template with question image overlaid on
+                        background
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant={useImageEditor ? "outline" : "default"}
+                      size="sm"
+                      onClick={() => setUseImageEditor(!useImageEditor)}
+                      className="flex items-center gap-2"
+                    >
+                      {useImageEditor ? (
+                        <Eye className="h-4 w-4" />
+                      ) : (
+                        <Edit3 className="h-4 w-4" />
+                      )}
+                      {useImageEditor ? "Preview" : "Edit"}
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
-                    {createdTemplates[0]?.backgroundImage &&
-                    createdTemplates[0]?.questionUrl ? (
-                      <div className="relative w-full h-full">
-                        {/* Background Image */}
-                        <img
-                          src={
-                            (
-                              createdTemplates[0].backgroundImage as {
-                                imageUrl?: string;
-                              }
-                            )?.imageUrl
-                          }
-                          alt="Background"
-                          className="w-full h-full object-cover"
-                        />
-
-                        {/* Question Image Overlay - Top Left Corner */}
-                        <div
-                          className="absolute top-4 left-4"
-                          style={{ width: "70%", maxHeight: "80%" }}
-                        >
+                  {createdTemplates[0]?.backgroundImage &&
+                  createdTemplates[0]?.questionUrl ? (
+                    useImageEditor ? (
+                      <ImageEditorWrapper
+                        backgroundImageUrl={
+                          (
+                            createdTemplates[0].backgroundImage as {
+                              imageUrl?: string;
+                            }
+                          )?.imageUrl || ""
+                        }
+                        questionImageUrl={
+                          (createdTemplates[0] as { questionUrl?: string })
+                            .questionUrl || ""
+                        }
+                        templateName={createdTemplates[0]?.name || ""}
+                        containerWidth={800}
+                        containerHeight={450}
+                        onPositionChange={setImagePosition}
+                        onSavedChangesUpdate={handleSavedChangesUpdate(
+                          createdTemplates[0]?.id || ""
+                        )}
+                        autoStartEdit={true}
+                      />
+                    ) : (
+                      <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
+                        <div className="relative w-full h-full">
+                          {/* Background Image */}
                           <img
                             src={
-                              (createdTemplates[0] as { questionUrl?: string })
-                                .questionUrl
+                              (
+                                createdTemplates[0].backgroundImage as {
+                                  imageUrl?: string;
+                                }
+                              )?.imageUrl
                             }
-                            alt="Question"
-                            className="w-full h-auto object-contain"
-                            style={{
-                              maxWidth: "100%",
-                              maxHeight: "100%",
-                              objectFit: "contain",
-                            }}
+                            alt="Background"
+                            className="w-full h-full object-cover"
                           />
+
+                          {/* Question Image Overlay - Top Left Corner */}
+                          <div
+                            className="absolute top-4 left-4"
+                            style={{ width: "70%", maxHeight: "80%" }}
+                          >
+                            <img
+                              src={
+                                (
+                                  createdTemplates[0] as {
+                                    questionUrl?: string;
+                                  }
+                                ).questionUrl
+                              }
+                              alt="Question"
+                              className="w-full h-auto object-contain"
+                              style={{
+                                maxWidth: "100%",
+                                maxHeight: "100%",
+                                objectFit: "contain",
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
-                    ) : (
+                    )
+                  ) : (
+                    <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
                       <div className="w-full h-full flex items-center justify-center">
                         <div className="text-center">
                           <FileImage className="h-12 w-12 text-gray-400 mx-auto mb-2" />
@@ -1173,8 +1308,8 @@ export default function CreateTemplatePage() {
                           </p>
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                   <div className="flex gap-3 mt-4">
                     {/* For folder templates, show PPT download even with single image */}
                     {(templateType as string) === "folder" ? (
@@ -1239,26 +1374,7 @@ export default function CreateTemplatePage() {
                           setDownloadSingleLoading(true);
                           const template = createdTemplates[0];
                           try {
-                            const response = await fetch(
-                              `/api/templates/${template.id}/download`,
-                              {
-                                credentials: "include",
-                              }
-                            );
-
-                            if (response.ok) {
-                              const blob = await response.blob();
-                              const url = window.URL.createObjectURL(blob);
-                              const a = document.createElement("a");
-                              a.href = url;
-                              a.download = `${template.name}.png`;
-                              document.body.appendChild(a);
-                              a.click();
-                              window.URL.revokeObjectURL(url);
-                              document.body.removeChild(a);
-                            } else {
-                              alert("Failed to download template");
-                            }
+                            await downloadTemplateWithEdits(template);
                           } catch (error) {
                             console.error("Error downloading template:", error);
                             alert("Failed to download template");
@@ -1270,6 +1386,8 @@ export default function CreateTemplatePage() {
                         <Download className="h-4 w-4 mr-2" />
                         {downloadSingleLoading
                           ? "Downloading..."
+                          : hasSavedChanges[createdTemplates[0]?.id]
+                          ? "Download Edited Template"
                           : "Download Template"}
                       </Button>
                     )}
