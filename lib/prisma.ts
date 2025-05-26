@@ -13,13 +13,6 @@ const prisma =
         url: process.env.DATABASE_URL,
       },
     },
-    // Add connection pool settings for better reliability
-    __internal: {
-      engine: {
-        connectTimeout: 60000, // 60 seconds
-        queryTimeout: 60000, // 60 seconds
-      },
-    },
   });
 
 if (process.env.NODE_ENV !== "production") {
@@ -36,8 +29,15 @@ export async function withRetry<T>(
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // Try to connect first
-      await prisma.$connect();
+      // Try to connect first with timeout
+      const connectPromise = prisma.$connect();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Connection timeout")), 10000)
+      );
+
+      await Promise.race([connectPromise, timeoutPromise]);
+
+      // Execute the operation
       return await operation();
     } catch (error: any) {
       lastError = error;
@@ -45,6 +45,13 @@ export async function withRetry<T>(
         `Database operation failed (attempt ${attempt}/${maxRetries}):`,
         error.message
       );
+
+      // Disconnect on error to clean up
+      try {
+        await prisma.$disconnect();
+      } catch {
+        // Ignore disconnect errors
+      }
 
       if (attempt < maxRetries) {
         console.log(`Retrying in ${delay}ms...`);
